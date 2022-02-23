@@ -1,12 +1,16 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	listers "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/listers/operators/v1alpha1"
 	"github.com/operator-framework/operator-lifecycle-manager/pkg/controller/registry"
+	"github.com/operator-framework/operator-registry/pkg/api"
 	"github.com/operator-framework/operator-registry/pkg/client"
+	orRegistry "github.com/operator-framework/operator-registry/pkg/registry"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -75,4 +79,66 @@ type phonyRegistryClientProvider struct {
 
 func (p phonyRegistryClientProvider) ClientsForNamespaces(namespaces ...string) map[registry.CatalogKey]client.Interface {
 	return p.clients
+}
+
+type phonyClient struct {
+	oq orRegistry.Querier
+	orRegistry.Querier
+}
+
+type phonyBundleStream struct {
+	bundles []*api.Bundle
+}
+
+func (c phonyClient) GetBundleInPackageChannel(ctx context.Context, packageName, channelName string) (*api.Bundle, error) {
+	return c.oq.GetBundleForChannel(ctx, packageName, channelName)
+}
+
+func (c phonyClient) GetPackage(ctx context.Context, packageName string) (*api.Package, error) {
+	p, err := c.oq.GetPackage(ctx, packageName)
+	if err != nil {
+		return nil, err
+	}
+
+	var channels []*api.Channel
+	for _, channel := range p.Channels {
+		channels = append(channels, &api.Channel{
+			Name:    channel.Name,
+			CsvName: channel.CurrentCSVName,
+		})
+	}
+
+	return &api.Package{
+		Name:               p.PackageName,
+		Channels:           channels,
+		DefaultChannelName: p.DefaultChannelName,
+	}, nil
+}
+
+func (c phonyClient) GetReplacementBundleInPackageChannel(ctx context.Context, currentName, packageName, channelName string) (*api.Bundle, error) {
+	return c.oq.GetBundleThatReplaces(ctx, currentName, packageName, channelName)
+}
+
+func (c phonyClient) HealthCheck(ctx context.Context, reconnectTimeout time.Duration) (bool, error) {
+	return true, nil
+}
+
+func (c phonyClient) ListBundles(ctx context.Context) (*client.BundleIterator, error) {
+	bundles, err := c.oq.ListBundles(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.NewBundleIterator(&phonyBundleStream{bundles: bundles}), nil
+}
+
+func (pbs *phonyBundleStream) Recv() (*api.Bundle, error) {
+	if len(pbs.bundles) == 0 {
+		return nil, nil
+	}
+
+	incBundle := pbs.bundles[0]
+	pbs.bundles = pbs.bundles[1:]
+
+	return incBundle, nil
 }

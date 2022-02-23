@@ -1,0 +1,117 @@
+---
+defaultChannel: preview
+name: etcd
+schema: olm.package
+---
+image: quay.io/olmqe/etcd-bundle:0.9.0-25934
+name: etcdoperator.v0.9.0
+package: etcd
+properties:
+- type: olm.channel
+  value:
+    name: preview
+- type: olm.gvk
+  value:
+    group: etcd.database.coreos.com
+    kind: EtcdBackup
+    version: v1beta2
+- type: olm.gvk
+  value:
+    group: etcd.database.coreos.com
+    kind: EtcdCluster
+    version: v1beta2
+- type: olm.gvk
+  value:
+    group: etcd.database.coreos.com
+    kind: EtcdRestore
+    version: v1beta2
+- type: olm.package
+  value:
+    packageName: etcd
+    version: 0.9.0
+schema: olm.bundle
+---
+schema: olm.channel
+package: etcd
+name: preview
+entries:
+  - name: etcdoperator.v0.9.0
+---
+defaultChannel: preview
+name: combo
+schema: olm.package
+---
+image: quay.io/tyslaton/combo-bundle:v0.0.1
+name: combo.v0.0.1
+package: combo
+properties:
+- type: olm.channel
+  value:
+    name: preview
+- type: olm.constraint
+  value:
+    all:
+      constraints:
+      - gvk:
+          group: etcd.database.coreos.com
+          kind: EtcdCluster
+          version: v1beta2
+        message: PodMonitor monitoring.coreos.com/v1 required for...
+    message: All are required for Baz because...
+- type: olm.gvk
+  value:
+    group: combo.io
+    kind: Combination
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: combo.io
+    kind: Template
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: combo
+    version: 0.0.1
+schema: olm.bundle
+---
+image: quay.io/tyslaton/combo-bundle:v0.0.2
+name: combo.v0.0.2
+package: combo
+properties:
+- type: olm.channel
+  value:
+    name: preview
+- type: olm.constraint
+  value:
+    all:
+      constraints:
+      - gvk:
+          group: etcd.database.coreos.com
+          kind: EtcdCluster
+          version: v1beta2
+        message: PodMonitor monitoring.coreos.com/v1 required for...
+    message: All are required for Baz because...
+- type: olm.gvk
+  value:
+    group: combo.io
+    kind: Combination
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: combo.io
+    kind: Template
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: combo
+    version: 0.0.2
+schema: olm.bundle
+---
+schema: olm.channel
+package: combo
+name: preview
+entries:
+  - name: combo.v0.0.1
+  - name: combo.v0.0.2
+    replaces: combo.v0.0.1
+    
